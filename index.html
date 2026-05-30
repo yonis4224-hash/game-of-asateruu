@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لعبة الأساطير - Game of Legends</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+
+  <!-- الشاشة الرئيسية -->
+  <div id="screen-home" class="screen active">
+    <div class="logo mt-3">
+      <h1>لعبة الأساطير</h1>
+      <p>Game of Legends</p>
+    </div>
+
+    <div class="card full-width">
+      <div class="input-group">
+        <label>اسم اللاعب</label>
+        <input type="text" id="player-name" placeholder="أدخل اسمك..." maxlength="16">
+      </div>
+
+      <label style="display:block;margin-bottom:0.5rem;font-weight:700;color:var(--text-secondary)">اختر أفاتارك</label>
+      <div class="avatar-grid" id="avatar-grid"></div>
+
+      <label style="display:block;margin-bottom:0.5rem;font-weight:700;color:var(--text-secondary)">اختر وضع اللعب</label>
+      <div class="mode-cards" id="mode-cards">
+        <div class="mode-card selected" data-mode="solo" onclick="selectMode('solo')">
+          <div class="mode-icon">🎮</div>
+          <div class="mode-title">فردي</div>
+          <div class="mode-desc">1-8 لاعبين</div>
+        </div>
+        <div class="mode-card" data-mode="team" onclick="selectMode('team')">
+          <div class="mode-icon">👥</div>
+          <div class="mode-title">جماعي</div>
+          <div class="mode-desc">فرق 2-6</div>
+        </div>
+        <div class="mode-card" data-mode="mafia" onclick="selectMode('mafia')">
+          <div class="mode-icon">🔫</div>
+          <div class="mode-title">مافيا</div>
+          <div class="mode-desc">4-12 لاعب</div>
+        </div>
+        <div class="mode-card" data-mode="codenames" onclick="selectMode('codenames')">
+          <div class="mode-icon">🕵️</div>
+          <div class="mode-title">كود نيمز</div>
+          <div class="mode-desc">2 فريقين</div>
+        </div>
+      </div>
+
+      <div class="flex-col gap-1 mt-2">
+        <button class="btn btn-primary btn-large btn-full" onclick="createRoom()">إنشاء غرفة</button>
+        <div style="display:flex;gap:0.8rem;width:100%">
+          <input type="text" id="join-code" placeholder="كود الغرفة" maxlength="6" style="flex:1;padding:0.9rem;background:rgba(255,255,255,0.06);border:2px solid var(--border-color);border-radius:var(--border-radius);color:var(--text-primary);font-family:'Cairo',sans-serif;font-size:1rem;text-align:center;text-transform:uppercase;letter-spacing:2px">
+          <button class="btn btn-secondary" onclick="joinRoom()">انضمام</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- لوبي الجماعي -->
+  <div id="screen-lobby" class="screen">
+    <div class="lobby-container">
+      <div class="lobby-header">
+        <div>
+          <div class="room-code" id="lobby-code">------</div>
+          <div class="text-secondary" style="font-size:0.85rem">شارك الكود مع أصدقائك</div>
+        </div>
+        <button class="btn btn-secondary" onclick="copyRoomCode()">📋 نسخ الكود</button>
+      </div>
+
+      <div class="teams-container" id="teams-container">
+        <div class="team-box team-a">
+          <h3><span class="team-a-label">فريق أ</span> 🔴</h3>
+          <div class="player-list" id="team-a-list"></div>
+          <button class="btn btn-team-a btn-full mt-1" onclick="switchTeam('a')">الانضمام لفريق أ</button>
+        </div>
+        <div class="team-box team-b">
+          <h3><span class="team-b-label">فريق ب</span> 🔵</h3>
+          <div class="player-list" id="team-b-list"></div>
+          <button class="btn btn-team-b btn-full mt-1" onclick="switchTeam('b')">الانضمام لفريق ب</button>
+        </div>
+      </div>
+
+      <div class="flex-row mt-2">
+        <button class="btn btn-primary btn-large" id="btn-start-game" onclick="startGame()">بدء اللعب</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- شاشة السؤال (إجابة الفخ) -->
+  <div id="screen-game" class="screen">
+    <div class="question-container">
+      <div class="question-header">
+        <span class="category-badge" id="q-category">فئة</span>
+        <span class="question-counter" id="q-counter">1/15</span>
+      </div>
+      <div class="question-text" id="q-text">السؤال هنا...</div>
+      <div class="timer-bar"><div class="timer-bar-fill" id="timer-fill" style="width:100%"></div></div>
+      <p class="text-secondary text-center mb-2">اكتب إجابة فخ توقع اللاعبين الآخرين فيها</p>
+      <div class="trap-input-area">
+        <textarea id="trap-answer-input" placeholder="اكتب إجابة فخك هنا..." rows="2"></textarea>
+        <button class="btn btn-primary btn-full mt-1" onclick="submitTrapAnswer()">إرسال</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- شاشة الخيارات -->
+  <div id="screen-game-options" class="screen">
+    <div class="question-container">
+      <div class="question-header">
+        <span class="category-badge" id="opt-category">فئة</span>
+        <span class="question-counter" id="opt-counter">1/15</span>
+      </div>
+      <div class="question-text" id="opt-text">السؤال هنا...</div>
+      <div class="timer-bar"><div class="timer-bar-fill" id="opt-timer-fill" style="width:100%"></div></div>
+      <p class="text-secondary text-center mb-2">اختر الإجابة الصحيحة من 4 خيارات</p>
+      <div class="options-grid" id="options-grid"></div>
+      <div id="waiting-msg" class="text-center text-muted mt-2" style="display:none">بانتظار اللاعبين...</div>
+    </div>
+  </div>
+
+  <!-- نتائج السؤال -->
+  <div id="screen-question-results" class="screen">
+    <div class="question-container">
+      <h2 class="text-center mb-2">نتيجة السؤال</h2>
+      <div id="correct-answer-display" class="text-center mb-2" style="font-size:1.3rem;font-weight:700;color:var(--accent-green-light)"></div>
+      <div id="results-table-wrapper" style="overflow-x:auto"></div>
+      <div class="flex-row mt-3">
+        <button class="btn btn-primary btn-large" onclick="requestNextQuestion()">التالي →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- شاشة الرسم -->
+  <div id="screen-draw" class="screen">
+    <div class="question-container">
+      <h2 class="text-center mb-2">جولة الرسم 🎨</h2>
+      <div id="draw-instructions" class="text-center text-secondary mb-2"></div>
+      <div class="draw-canvas-container">
+        <canvas id="draw-canvas" width="480" height="400"></canvas>
+        <div class="draw-tools" id="draw-tools"></div>
+      </div>
+      <div class="mt-2">
+        <input type="text" id="draw-guess-input" placeholder="اكتب تخمينك..." style="width:100%;padding:0.9rem;background:rgba(255,255,255,0.06);border:2px solid var(--border-color);border-radius:var(--border-radius);color:var(--text-primary);font-family:'Cairo',sans-serif;font-size:1rem">
+        <button class="btn btn-primary btn-full mt-1" onclick="submitDrawGuess()">تخمين</button>
+      </div>
+      <div id="draw-result" class="text-center mt-2"></div>
+      <div class="flex-row mt-2">
+        <button class="btn btn-secondary" onclick="endDrawRound()">انتهت جولة الرسم</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- شاشة كود نيمز -->
+  <div id="screen-codenames" class="screen">
+    <div class="question-container">
+      <h2 class="text-center mb-1">كود نيمز 🕵️</h2>
+      <div class="flex-row mb-2">
+        <span id="cn-turn-indicator" class="category-badge" style="color:var(--accent-red-light);border-color:var(--accent-red)">دور فريق أحمر</span>
+      </div>
+      <div id="cn-clue-display" class="text-center mb-2" style="display:none">
+        <span style="font-size:1.3rem;font-weight:700;color:var(--accent-yellow)">التلميح: </span>
+        <span id="cn-clue-word" style="font-size:1.5rem;font-weight:900"></span>
+        <span id="cn-clue-count" style="font-size:1.1rem;color:var(--text-secondary)"></span>
+      </div>
+      <div class="codenames-board" id="codenames-board"></div>
+      <div id="cn-spymaster-area" class="mt-2" style="display:none">
+        <div class="input-group" style="max-width:100%">
+          <label>أنت السباي ماستر - اكتب تلميح</label>
+          <div style="display:flex;gap:0.5rem">
+            <input type="text" id="cn-clue-input" placeholder="كلمة التلميح" style="flex:2;padding:0.8rem;background:rgba(255,255,255,0.06);border:2px solid var(--border-color);border-radius:var(--border-radius);color:var(--text-primary);font-family:'Cairo',sans-serif;font-size:1rem">
+            <input type="number" id="cn-clue-number" placeholder="العدد" min="0" max="9" style="flex:1;padding:0.8rem;background:rgba(255,255,255,0.06);border:2px solid var(--border-color);border-radius:var(--border-radius);color:var(--text-primary);font-family:'Cairo',sans-serif;font-size:1rem;text-align:center">
+            <button class="btn btn-primary" onclick="submitSpymasterClue()">إرسال</button>
+          </div>
+        </div>
+      </div>
+      <div class="flex-row mt-2">
+        <button class="btn btn-secondary" onclick="endCodenamesTurn()">إنهاء الدور</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- النتائج النهائية -->
+  <div id="screen-results" class="screen">
+    <div class="final-results">
+      <h1 class="mb-2">🏆 النتائج النهائية</h1>
+      <div id="winner-display"></div>
+      <div class="rankings" id="rankings"></div>
+      <button class="btn btn-primary btn-large mt-3" onclick="goHome()">العودة للرئيسية</button>
+    </div>
+  </div>
+
+  <!-- لوبي المافيا -->
+  <div id="screen-mafia-lobby" class="screen">
+    <div class="lobby-container">
+      <div class="lobby-header">
+        <div>
+          <div class="room-code" id="mafia-code">------</div>
+          <div class="text-secondary" style="font-size:0.85rem">لعبة المافيا</div>
+        </div>
+        <button class="btn btn-secondary" onclick="copyRoomCode()">📋 نسخ الكود</button>
+      </div>
+
+      <div class="card full-width mt-2">
+        <h3 class="mb-1">إعدادات الأدوار</h3>
+        <div class="flex-row" style="justify-content:space-around">
+          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+            <input type="checkbox" id="cfg-doctor" checked onchange="updateMafiaConfig()"> 💊 طبيب
+          </label>
+          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+            <input type="checkbox" id="cfg-police" checked onchange="updateMafiaConfig()"> 🔍 شرطي
+          </label>
+        </div>
+      </div>
+
+      <div class="player-list mt-2" id="mafia-players-list" style="max-width:500px;margin:0 auto"></div>
+
+      <div class="flex-row mt-2">
+        <button class="btn btn-primary btn-large" onclick="startMafiaGame()">بدء اللعبة 🔫</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- شاشة ليل المافيا -->
+  <div id="screen-mafia-night" class="screen">
+    <div class="mafia-container">
+      <div class="mafia-phase-indicator">
+        <span class="phase-badge phase-night active">🌙 الليل</span>
+        <span class="phase-badge phase-day">☀️ النهار</span>
+        <span class="phase-badge phase-voting">🗳️ التصويت</span>
+      </div>
+      <div class="text-center">
+        <div class="role-badge" id="mafia-role-badge">مجهول</div>
+        <h2 id="mafia-night-title">🌙 الليل - حان وقت النوم</h2>
+        <p class="text-secondary mt-1" id="mafia-night-subtitle">انتظر...</p>
+      </div>
+      <div id="mafia-night-actions" class="mt-2"></div>
+      <div id="mafia-timer-display" class="text-center mt-2" style="font-size:2rem;font-weight:900;color:var(--accent-purple-light)"></div>
+    </div>
+  </div>
+
+  <!-- شاشة نهار المافيا -->
+  <div id="screen-mafia-day" class="screen">
+    <div class="mafia-container">
+      <div class="mafia-phase-indicator">
+        <span class="phase-badge phase-night">🌙 الليل</span>
+        <span class="phase-badge phase-day active">☀️ النهار</span>
+        <span class="phase-badge phase-voting">🗳️ التصويت</span>
+      </div>
+      <div class="text-center">
+        <h2>☀️ النهار</h2>
+        <div id="mafia-day-deaths" class="mt-1"></div>
+      </div>
+      <div class="mafia-chat">
+        <div class="chat-messages" id="mafia-chat-messages"></div>
+        <div class="chat-input-row">
+          <input type="text" id="mafia-chat-input" placeholder="اكتب رسالة..." onkeypress="if(event.key==='Enter')sendMafiaChat()">
+          <button class="btn btn-primary" onclick="sendMafiaChat()">إرسال</button>
+        </div>
+      </div>
+      <div class="text-center mt-2">
+        <p class="text-secondary mb-1">ترشيح لاعب للطرد</p>
+        <div class="mafia-players-grid" id="mafia-day-players"></div>
+      </div>
+      <div id="mafia-timer-day" class="text-center mt-2" style="font-size:2rem;font-weight:900;color:var(--accent-yellow)"></div>
+    </div>
+  </div>
+
+  <!-- شاشة تصويت المافيا -->
+  <div id="screen-mafia-voting" class="screen">
+    <div class="mafia-container">
+      <div class="mafia-phase-indicator">
+        <span class="phase-badge phase-night">🌙 الليل</span>
+        <span class="phase-badge phase-day">☀️ النهار</span>
+        <span class="phase-badge phase-voting active">🗳️ التصويت</span>
+      </div>
+      <div class="text-center">
+        <h2>🗳️ التصويت للطرد</h2>
+        <p class="text-secondary mt-1">اختر من تريد طرده</p>
+      </div>
+      <div class="mafia-players-grid mt-2" id="mafia-vote-players"></div>
+      <div id="mafia-timer-vote" class="text-center mt-2" style="font-size:2rem;font-weight:900;color:var(--accent-red-light)"></div>
+    </div>
+  </div>
+
+  <!-- نتائج المافيا -->
+  <div id="screen-mafia-results" class="screen">
+    <div class="mafia-container">
+      <div class="text-center">
+        <h1 id="mafia-results-title">🏆 نهاية اللعبة</h1>
+        <div id="mafia-results-winner" class="winner-card mt-2"></div>
+        <div id="mafia-results-roles" class="mt-2"></div>
+        <button class="btn btn-primary btn-large mt-3" onclick="goHome()">العودة للرئيسية</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- لوبي كود نيمز المستقل -->
+  <div id="screen-codenames-lobby" class="screen">
+    <div class="lobby-container">
+      <div class="lobby-header">
+        <div>
+          <div class="room-code" id="cn-lobby-code">------</div>
+          <div class="text-secondary" style="font-size:0.85rem">كود نيمز المستقل</div>
+        </div>
+        <button class="btn btn-secondary" onclick="copyRoomCode()">📋 نسخ الكود</button>
+      </div>
+
+      <div class="teams-container mt-2">
+        <div class="team-box team-a">
+          <h3><span class="team-a-label">فريق أحمر</span> 🔴</h3>
+          <div class="player-list" id="cn-team-a-list"></div>
+          <button class="btn btn-team-a btn-full mt-1" onclick="pickCodenamesTeam('a')">الانضمام للأحمر</button>
+        </div>
+        <div class="team-box team-b">
+          <h3><span class="team-b-label">فريق أزرق</span> 🔵</h3>
+          <div class="player-list" id="cn-team-b-list"></div>
+          <button class="btn btn-team-b btn-full mt-1" onclick="pickCodenamesTeam('b')">الانضمام للأزرق</button>
+        </div>
+      </div>
+
+      <div class="flex-row mt-2">
+        <button class="btn btn-primary btn-large" onclick="startCodenamesGame()">بدء اللعب</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/client.js"></script>
+</body>
+</html>
