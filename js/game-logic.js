@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const questions = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'قاعدة_الأسئلة.json'), 'utf8'));
+const questions = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'questions.json'), 'utf8'));
 
 const rooms = {};
 
