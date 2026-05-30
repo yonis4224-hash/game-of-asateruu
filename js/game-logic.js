@@ -1,7 +1,16 @@
 const fs = require('fs');
 const path = require('path');
 
-const questions = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'questions.json'), 'utf8'));
+let questions;
+try {
+  const qPath = path.join(__dirname, '..', 'data', 'questions.json');
+  console.log('Loading questions from:', qPath);
+  questions = JSON.parse(fs.readFileSync(qPath, 'utf8'));
+  console.log('Questions loaded successfully');
+} catch (e) {
+  console.error('Failed to load questions:', e.message);
+  questions = { "ثقافة_عامة": [], "سينما_وأنمي": [], "تاريخ_وجغرافيا": [], "مصارعة": [] };
+}
 
 const rooms = {};
 
