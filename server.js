@@ -1,7 +1,14 @@
+console.log('=== SERVER STARTING ===');
+console.log('CWD:', process.cwd());
+console.log('PORT env:', process.env.PORT);
+console.log('Node version:', process.version);
+
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+
+console.log('Modules loaded, creating app...');
 
 const app = express();
 const server = http.createServer(app);
@@ -13,14 +20,17 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.static(path.join(__dirname)));
 
+console.log('Loading game logic...');
+
 let gameLogic;
 try {
   gameLogic = require('./js/game-logic');
-  console.log('Game logic loaded successfully');
 } catch (e) {
-  console.error('Failed to load game logic:', e.message);
+  console.error('FAILED to load game logic:', e.message);
   process.exit(1);
 }
+
+console.log('Game logic loaded successfully');
 
 function roomEmit(code, event, data) {
   io.to(code).emit(event, data);
