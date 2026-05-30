@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: game-of-asater
+    name: asateen-legends
     env: node
     buildCommand: npm install
     startCommand: node server.js

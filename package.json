@@ -1,5 +1,5 @@
 {
-  "name": "asateen-game",
+  "name": "asateen-legends",
   "version": "1.0.0",
   "description": "لعبة الأساطير - لعبة أونلاين متعددة اللاعبين",
   "main": "server.js",
